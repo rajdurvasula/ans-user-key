@@ -1,0 +1,44 @@
+---
+# tasks file for setup_user
+- name: Create group
+  group:
+    gid: '{{ user.group.id }}'
+    name: '{{ user.group.name }}'
+    state: present
+
+- name: Create user
+  user:
+    name: '{{ user.name }}'
+    uid: '{{ user.id }}'
+    shell: /bin/bash
+    group: '{{ user.group.name }}'
+    state: present
+
+- name: Create ssh dir
+  file:
+    path: '/home/{{ user.name }}/.ssh'
+    state: directory
+    mode: '0755'
+
+- name: Check authorized_keys exists
+  stat:
+    path: '/home/{{ user.name }}/.ssh/authorized_keys'
+  register: authorized_keys_status
+  
+- name: Touch authorized_keys file
+  file:
+    path: '/home/{{ user.name }}/.ssh/authorized_keys'
+    state: touch
+    owner: '{{ user.name }}'
+    group: '{{ user.group.name }}'
+    mode: '0600'
+  when:
+  - not authorized_keys_status.stat.exists
+
+- name: Append public key to authorized_keys
+  lineinfile:
+    path: '/home/{{ user.name }}/.ssh/authorized_keys'
+    insertafter: EOF
+    line: '{{ pub_key }}'
+    owner: '{{ user.name }}'
+    group: '{{ user.group.name }}'
